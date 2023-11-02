@@ -1,0 +1,31 @@
+import streamlit as st
+from snowflake.snowpark import Session
+
+st.title('❄️ How to connect Streamlit to a Snowflake database')
+
+def create_session():
+    return Session.builder.configs(st.secrets.snowflake).create()
+
+session = create_session()
+st.success("connected to snowflake!")
+
+#데이터 넣기
+def load_data(table_name):
+    st.write(f"Here'ts some example data from '{table_name}':")
+    table = session.table(table_name)
+
+    table = table.limit(100)
+    table = table.collect()
+    return table
+
+# 테이블선택
+table_name = "PETS.PUBLIC.MYTABLE"
+
+## 테이블만들기
+with st.expander("See Table"):
+    df = load_data(table_name)
+    st.dataframe(df)
+
+## 데이터 작성
+for row in df:
+    st.write(f"{row[0]} has a :{row[1]}:")
