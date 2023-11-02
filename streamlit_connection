@@ -1,3 +1,5 @@
+# 추가설명 - notion
+# https://www.notion.so/a2c2062cd8a9483fbba4c887c912167e
 import streamlit as st
 from snowflake.snowpark import Session
 
