@@ -1,0 +1,18 @@
+-----------------------
+-- 정합성 검증
+-- CREATED AT 2023-11-289
+-- JOB COMENT
+-- >> 1. CREATE문으로 빈 테이블 생성 후 TRAUNC문으로 공간 삭제
+-- >> 2. S3 혹은 수동으로 데이터를 적재
+-- >> 3. GROUP BY 문으로 중복값 확인 
+-----------------------
+
+-- 빈 테이블 생성
+create or replace table check_loan as select * from LOANS_ENRICHED where 1= 2;
+
+select * from check_loan;
+-- 삭제 
+TRUNCATE TABLE check_loan;
+-- 데이터 추가
+insert into check_loan select * from loans_enriched;
+
