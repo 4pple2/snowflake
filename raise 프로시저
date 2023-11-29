@@ -1,0 +1,42 @@
+/*redshift의 raise 대체 프로시저*/
+create or replace procedure raise(tsk varchar)
+returns table(time varchar, tsk varchar)
+language sql
+EXECUTE AS CALLER
+as
+/*
+**********************
+-- VERSION    : 0.1
+-- CREATED AT : 2023.11.28
+-- LAST UPDATE: 
+-- PURPOSE    : 프로시저 호출 및 프로시저 내부 진행 현황 관리용 프로시저
+-- JOB COMMENT 
+-- 	>> 1. redshit의 raise문을 snowflake에서 사용할 수 없음.
+--  >> 2. 이에 프로시저 내부 진행 상황을 OUT CONSOLE이 아닌 로그용 테이블에 기록할 수 있도록 구성.
+--  >> 3. 모든 프로시저 내의 각 CRUD 전,후로 호출되며 프로시저에 대한 이력을 관리하도록 함.
+**********************
+*/
+$$
+
+DECLARE
+    time date;
+    statement varchar;
+    res RESULTSET DEFAULT (select :tsk, :time from dual);
+    select_statement varchar;
+    
+BEGIN
+    
+    create table if not exists log_table(
+        time timestamp,
+        tsk varchar
+    );
+    insert into log_table values(current_date()||' '||current_time(), :tsk);
+    
+    res := (select current_date()||' '||current_time(), :tsk );
+    return table(res);
+    
+    end;
+$$;
+
+call raise('insert')
+;
