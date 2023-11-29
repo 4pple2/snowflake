@@ -1,0 +1,43 @@
+CREATE OR REPLACE PROCEDURE PC_DATAIKU_DB.PUBLIC.ERROR_TYPE()
+RETURNS VARCHAR(16777216)
+LANGUAGE SQL
+EXECUTE AS OWNER
+AS '
+DECLARE
+    res RESULTSET DEFAULT (select grade from LOANS_ENRICHED limit 10);
+    select_statement VARCHAR;
+    
+BEGIN
+
+    call raise(''created'');
+
+    create or replace table test_table
+    as 
+    select a.LOAN_ID, grade from LOANS_ENRICHED a 
+    left join UNEMPLOYMENT_DATA b
+    on a.LOAN_ID = b.LOAN_ID
+    limit 10 ;
+    
+    res := (SELECT GRADE FROM TEST_TABLE);
+
+    RETURN ''success'';
+  
+   
+EXCEPTION
+  WHEN statement_error THEN
+    RETURN OBJECT_CONSTRUCT(''Error type'', ''STATEMENT_ERROR'',
+                            ''SQLCODE'', sqlcode,
+                            ''SQLERRM'', sqlerrm,
+                            ''SQLSTATE'', sqlstate);
+  WHEN expression_error THEN
+    RETURN OBJECT_CONSTRUCT(''Error type'', ''expression_error'',
+                            ''SQLCODE'', sqlcode,
+                            ''SQLERRM'', sqlerrm,
+                            ''SQLSTATE'', sqlstate);
+  WHEN OTHER THEN
+    RETURN OBJECT_CONSTRUCT(''Error type'', ''Other error'',
+                            ''SQLCODE'', sqlcode,
+                            ''SQLERRM'', sqlerrm,
+                            ''SQLSTATE'', sqlstate);
+    END;
+';
