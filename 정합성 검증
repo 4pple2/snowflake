@@ -10,9 +10,13 @@
 -- 빈 테이블 생성
 create or replace table check_loan as select * from LOANS_ENRICHED where 1= 2;
 
-select * from check_loan;
--- 삭제 
+-- select * from check_loan;
+-- 테이블 내용 삭제
 TRUNCATE TABLE check_loan;
--- 데이터 추가
-insert into check_loan select * from loans_enriched;
+-- 데이터 삽입
+insert into check_loan; select * from loans_enriched;
 
+-- group by를 통해서 중복값이 있는지 확인한다
+select loan_id,count(*) from check_loan
+group by loan_id
+having count(*) >1;
