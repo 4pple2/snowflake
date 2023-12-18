@@ -1,7 +1,7 @@
 ---------------------------
 -- 목적 : 권한 권리를 위한 아키텍처 구성 및 재현
 -- access 권한 shared 권한 
--- 아키텍처 이미지 : https://ibb.co/5x3jMdL
+-- 아키텍처 이미지 : https://ibb.co/3MtPVd8
 ---------------------------
 -- useradmin으로 유저 생성
 use role useradmin;
