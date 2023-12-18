@@ -1,0 +1,62 @@
+---------------------------
+-- 목적 : 권한 권리를 위한 아키텍처 구성 및 재현
+-- access 권한 shared 권한 
+-- 아키텍처 이미지 : https://ibb.co/5x3jMdL
+---------------------------
+-- useradmin으로 유저 생성
+use role useradmin;
+
+create or replace user share_tester identified by '1234';
+create or replace user iku_anaylsis identified by '1234';
+create or replace user full_priv identified by '1234';
+
+-- role 생성
+use role useradmin;
+create or replace role share_db ;
+create or replace role iku_db;
+create or replace role full_access ;
+
+drop 
+-- tester 유저에게 권한 부여 (usage schema, imported privileges)
+use role securityadmin;
+GRANT IMPORTED PRIVILEGES on database FINANCIAL__ECONOMIC_ESSENTIALS to share_db;
+use role sysadmin;
+grant usage on schema CYBERSYN to sysadmin;
+
+
+-- iku유저에게 권한 부여 (usage database, read stage, write stage)
+use role securityadmin;
+grant usage on database pc_dataiku_db to iku_db;
+
+use role sysadmin;
+grant read on stage pc_dataiku_db.public.DATAIKU_DEFAULT_STAGE to iku_db;
+grant write on stage pc_dataiku_db.public.DATAIKU_DEFAULT_STAGE to iku_db;
+"""
+    stage를 쓰고 읽는 권한이 있다고 해서 스키마에 없는 스테이는 사용할 수 없다
+    그렇기 떄문에 스키마에 따로 usage를 준다
+"""
+grant usage on schema pc_dataiku_db.public to iku_db;
+
+use role accountadmin;
+grant usage on warehouse compute_wh to iku_db;
+
+-- iku 권한과 share 권한을 full 권한에게 부여
+grant role iku_db to role full_access;
+grant role share_db to role full_access;
+
+-- role을 sysadmin에게 부여
+grant role iku_db to role sysadmin;
+grant role share_db to role sysadmin;
+
+-------------------
+-- 권한 부여
+-- iku_db -> iku_anaylsis
+-- share_db -> share_tester
+-- full_access -> full_priv
+-------------------
+use role securityadmin;
+grant role iku_db to user iku_anaylsis;
+grant role share_db to user share_tester;
+grant role full_access to user full_priv;
+
+
