@@ -1,0 +1,102 @@
+import streamlit as st
+import pandas as pd
+from snowflake.snowpark.context import get_active_session
+import sys
+
+session = get_active_session()
+
+# 칼럼명 불러오기
+def column_name():
+    sql = f"""SELECT *
+              FROM penta.CJ_TEST."VW_제품_월별판매_아이템" where 1=2 limit 1;  
+               """
+    created_dataframe = session.sql(sql)
+    queried_data = created_dataframe.to_pandas()
+   
+    return queried_data.columns
+
+
+
+# 칼럼 값 불러오기
+def column_data(filter_col):
+    sql = f"""SELECT "{filter_col}"
+              FROM penta.CJ_TEST."VW_제품_월별판매_아이템" group by "{filter_col}" ORDER by "{filter_col}" limit 10 ;
+               """
+    
+    created_dataframe = session.sql(sql)
+    queried_data = created_dataframe.to_pandas()
+    
+    return queried_data
+    
+
+# 필터 구현
+def filter_data(filter_dict):
+    
+    sql = f"""SELECT *
+      FROM penta.CJ_TEST."VW_제품_월별판매_아이템"
+      WHERE 1=1 
+    """
+  
+    for key, value in filter_dict.items(): 
+        
+        value_str = ', '.join([f"'{k}'" for k in value])
+        
+        if value_str == '':
+            break;
+        else:
+            sql += f""" and "{key}" NOT IN ({value_str})"""
+    
+    sql += """ LIMIT 10;"""                                             # 테이블 개수 설정
+
+    
+    created_dataframe = session.sql(sql)
+    queried_data = created_dataframe.to_pandas()
+
+    return queried_data
+
+
+# 딕셔너리에 추가 함수
+def add_filter_to_dict(filter_dict, filter_name, filters):              # 딕셔너리에 추가
+    filter_dict[filter_name] = filters
+    
+# 메인 함수
+def main(select_filters):
+    
+    filter_dict = {}                                                    # 딕셔너리 초기화
+    columns = ''                                                        # 권역 쪼개기를 위한 초기화
+    
+    if len(select_filters) > 0:                                         # StreamlitAPIException 방지하기 위한 if문
+        columns = st.columns(len(select_filters))
+    
+        
+    for i, filter_col in enumerate(columns, start=0):                   # 설명을 위해서 i값을 추가했다.
+        filters = filter_col.multiselect(f'{select_filters[i]} 필터+{i}', column_data(select_filters[i])) # filters => 리스트로 생성
+        add_filter_to_dict(filter_dict, select_filters[i], filters)
+        
+    data_filtered = filter_data(filter_dict)                            # st.write하면 표 추출
+
+    if len(select_rows) == 0:
+        st.write(data_filtered)
+    else:
+        pdf1 = pd.pivot_table(data_filtered, index =select_columns,
+                              columns=select_rows,
+                              values = select_value)   
+    
+        st.write(pdf1)
+
+    
+if __name__ == "__main__":
+    st.sidebar.markdown("# Main page 🎈")  
+    col1 , col2 = st.sidebar.columns(2)
+    col3 , col4 = st.sidebar.columns(2)
+    
+    # 리스트로 출력됨
+    select_filters = col1.multiselect('필터',column_name())               # 선택한 값이 리스트로 만들어진다.
+    select_rows = col2.multiselect('행',column_name())
+    select_columns = col3.multiselect('열',column_name())
+    select_value = col4.multiselect('값',column_name())
+
+    st.title("Snowflake Streamlit Pivot Table")
+    main(select_filters)
+
+    
