@@ -4,7 +4,9 @@ from snowflake.snowpark.context import get_active_session
 #import sys
 import matplotlib.pyplot as plt
 import altair as alt
-import seaborn as sne
+import seaborn as sns
+from bokeh.plotting import figure,output_file, show
+from bokeh.io import output_notebook
 
 # import plotly.plotly as py - 구 버전 -> 더이상 사용하지 않는다
 import plotly.express as px #- express로 대체함
@@ -246,7 +248,8 @@ if __name__ == "__main__":
         
             
             # '브랜드'를 기준으로 묶어서 각 '아이템명'의 일별 판매액 합계를 구합니다.
-            area_data = pdf_brand_month.groupby(['브랜드', '월']).sum().reset_index()
+            area_data = pdf_brand_month
+
             
             # '브랜드'를 기준으로 각 '아이템명'의 일별 매출을 Area Chart로 시각화합니다.
             area_chart = alt.Chart(area_data, title='일별 매출').mark_area().encode(
@@ -256,20 +259,79 @@ if __name__ == "__main__":
             ).properties(width=600, height=500)
     
         st.altair_chart(area_chart, use_container_width=True)
-####### alt 라이브러리 
+        
+##### seaborn 라이브러리 
     with tab3:
         st.title("Chart Page")
         st.subheader("유형 별 차트 종류에 대해 소개한다.")
-        with col1:
-            st.metric(label="측정치 1", value=sql)
-            st.caption("이는 측정치 1에 대한 추가 정보입니다.")
-            fig, ax = plt.subplots()  # 새로운 그림과 축 생성
-            ax.scatter(year_data, x= "년," )  # 데이터를 산점도로 플로팅
+        col4,col5,col6,col7,empty3,empty4,empty5 = st.columns([1.2,1.2,1.2,1.2,0.3,0.3,0.3])
+        
+        with empty3:
+            st.empty()
+            
+        with col4:
+            fig = plt.figure(figsize=(20, 20))
+            sns.lineplot(data=area_data,  x='월',
+                y='판매액_한국')
             st.pyplot(fig)
-        
-        
+            
+        with col5:
+            fig = plt.figure(figsize=(20, 20))
+            sns.barplot(data=area_data,  x='월',
+                y='판매액_한국')
+            st.pyplot(fig)
+            
+        with empty4:
+            st.empty()
+            
+        with col6:
+            fig = plt.figure(figsize=(20, 20))
+            sns.boxplot(data=area_data,  x='월',
+                y='출구수량')
+            st.pyplot(fig)
+            
+        with col7:
+            fig = plt.figure(figsize=(20, 20))
+            sns.distplot(area_data['월'])
+            st.pyplot(fig)
+##### plotly.express 라이브러리 사용
+        with empty5:
+            st.empty()
+            
+            fig2 = px.bar(pdf1, y='판매액_한국', x=['A','I','M','ST','V','W','X'],
+	               text_auto=True, title='매출액')
+            #fig2.update_traces(textposition='outside', textinfo='percent+label')
+            fig2.update_layout(font=dict(size=14),width=300,
+                            height=300,margin=dict(l=0, r=0, t=30, b=0))
+            
+            fig2.update(layout_showlegend=False) # 범례표시 제거
+            st.plotly_chart(fig2)    
+            
+        col8,col9,col10,col11,empty6,empty7,empty8 = st.columns([1.2,1.2,1.2,1.2,0.3,0.3,0.3])
+            
+        with col8:
+            fig = px.histogram(area_data, x = '출구수량', color = '월')
+            st.plotly_chart(fig)
+            
+        with col9:
+            fig = px.scatter(area_data, x= '출구수량',y ='입고원가' ,color = '월')
+            st.plotly_chart(fig)
+            
+        with col10:
+            fig = px.pie(values = pdf1['출구수량']) # 숫자만 들어갈 수 있다.
+            st.plotly_chart(fig)
+            
 
+        
+            
+ 
 
 
 
             
+
+            
+
+
+        
+
