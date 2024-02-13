@@ -195,7 +195,13 @@ if __name__ == "__main__":
             
             st.altair_chart(chart, use_container_width=True)
         
-####### alt 라이브러리 
+##### altair 라이브러리 
+# 장점 
+# 1. 문법이 쉽다.
+# 2. 그래프의 크기를 고정값으로 줄수 있다.
+# 단점
+# 1. seaborn이나 plotly 만큼 그래프가 이쁘진 않다.
+#####
     with tab2:
         st.title("Brand Chart Page")
         st.subheader("브랜드 별 매출 데이터")
@@ -260,7 +266,14 @@ if __name__ == "__main__":
     
         st.altair_chart(area_chart, use_container_width=True)
         
+
 ##### seaborn 라이브러리 
+# 장점 
+# 1. 시각적으로 이쁜 그래프가 작성된다.
+# 2. 박스도표 및 바이올린 도표등 통계 그래프 작성이 가능하다.
+# 단점
+# 1. 고도로 복잡한 수준의 시각화에는 제한이 있다.
+#####
     with tab3:
         st.title("Chart Page")
         st.subheader("유형 별 차트 종류에 대해 소개한다.")
@@ -294,44 +307,46 @@ if __name__ == "__main__":
             fig = plt.figure(figsize=(20, 20))
             sns.distplot(area_data['월'])
             st.pyplot(fig)
-##### plotly.express 라이브러리 사용
+##### plotly.express 라이브러리 사용 
+# 장점 
+# 1. 동적 그래프 만들기 수행 가능하다.
+# 2. 비교적 간결한 코드작성
+# 3. 시각적으로 표현할 수 있는 그래프가 다양하다
+# 단점
+# 1. 커스텀 영역에서 제한 사항이 있다.
+#####
         with empty5:
             st.empty()
             
-            fig2 = px.bar(pdf1, y='판매액_한국', x=['A','I','M','ST','V','W','X'],
-	               text_auto=True, title='매출액')
-            #fig2.update_traces(textposition='outside', textinfo='percent+label')
-            fig2.update_layout(font=dict(size=14),width=300,
-                            height=300,margin=dict(l=0, r=0, t=30, b=0))
-            
-            fig2.update(layout_showlegend=False) # 범례표시 제거
-            st.plotly_chart(fig2)    
-            
         col8,col9,col10,col11,empty6,empty7,empty8 = st.columns([1.2,1.2,1.2,1.2,0.3,0.3,0.3])
-            
+        # 누적막대
         with col8:
             fig = px.histogram(area_data, x = '출구수량', color = '월')
             st.plotly_chart(fig)
-            
+        # 산점도
         with col9:
             fig = px.scatter(area_data, x= '출구수량',y ='입고원가' ,color = '월')
             st.plotly_chart(fig)
-            
+        # 파이차트
         with col10:
             fig = px.pie(values = pdf1['출구수량']) # 숫자만 들어갈 수 있다.
             st.plotly_chart(fig)
+        # bar차트
+        with col11:
+            fig2 = px.bar(pdf1, y='판매액_한국', x=['A','I','M','ST','V','W','X'],
+	               text_auto=True, title='매출액')
+            # fig2.update_traces(textposition='outside', textinfo='percent+label')
             
-
-        
+            # fig2.update_layout(font=dict(size=14),width=300,height=300,margin=dict(l=0, r=0, t=30, b=0))
             
- 
-
-
-
+            # fig2.update(layout_showlegend=False) # 범례표시 제거
+            st.plotly_chart(fig2) 
             
-
-            
-
-
-        
+##### plotly.express 라이브러리 사용 
+# 장점 
+# 1. express보다 좀더 자세한 기능을 커스터마이징 할 수 있다.
+# 2. 이중축 등의 기능이 사용 가능하기 떄문에 시각적으로 표현할 수 있는 그래프가 다양하다
+# 단점
+# 1. 문법적으로 난이도가 있는 편이다.
+##### 
 
