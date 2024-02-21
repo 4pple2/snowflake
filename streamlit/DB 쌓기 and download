@@ -1,0 +1,179 @@
+from snowflake.snowpark.context import get_active_session
+from snowflake.snowpark.functions import sum, col
+from snowflake.snowpark.session import Session
+from pandas.plotting import table
+from config_s3 import settings
+#시각화
+import altair as alt
+import streamlit as st
+import pandas as pd
+import config
+import dataframe_image as dfi 
+import matplotlib.pyplot as plt
+
+import os
+import sys
+import 파이썬_테스트
+
+import boto3
+import json
+from datetime import datetime 
+st.set_page_config(layout="wide")
+empty1,con1,empty2 = st.columns([0.3,1.0,0.3])
+
+# snowflake 연결
+def Create_session_object() -> Session:
+   _conn_params = {
+      "account": config.conn_params["account"],
+      "user": config.conn_params["user"],
+      "password": config.conn_params["password"],
+      "role": config.conn_params["role"],
+      "warehouse": config.conn_params["warehouse"],
+      "database": config.conn_params["database"],
+      "schema" : "CJ_TEST"
+   }
+
+   session = Session.builder.configs(_conn_params).create()
+   print(session.sql('select current_warehouse(), current_database(), current_schema()').collect())
+   return session
+# s3_ boto3 환경설정
+ACCESS_KEY = 'AKIAY2WQZ36SOZD5FFOY'
+SECRET_KEY = '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'
+bucket = 'test4streamlit'
+file_name = 's3_test_{}{:02d}{:02d}{:02d}'.format(datetime.today().year, datetime.today().month, datetime.today().day, datetime.today().second)
+
+#  
+def upload_file_s3(bucket,file_name,file):
+    s3 = boto3.client('s3',aws_access_key_id = ACCESS_KEY, aws_secret_access_key=SECRET_KEY)
+    encode_file = json.dumps(file,indent=4, ensure_ascii=False)
+    
+    try:
+        s3.put_object(Bucket=bucket,Key=file_name, Body=encode_file)
+        return True
+    except:
+                return False
+
+# 칼럼명 불러오기
+def column_name():
+    sql = f"""SELECT *
+              FROM penta.CJ_TEST."VW_제품_월별판매_아이템" where 1=2 limit 1;  
+               """
+    created_dataframe = session.sql(sql)
+    queried_data = created_dataframe.to_pandas()
+    
+   
+    return queried_data.columns
+
+
+
+# 칼럼 값 불러오기
+def column_data(filter_col):
+    sql = f"""SELECT "{filter_col}"
+              FROM penta.CJ_TEST."VW_제품_월별판매_아이템" group by "{filter_col}" ORDER by "{filter_col}" limit 10 ;
+               """
+    
+    created_dataframe = session.sql(sql)
+    queried_data = created_dataframe.to_pandas()
+    
+    return queried_data
+    
+
+# 필터 구현
+def filter_data(filter_dict):
+    
+    sql = f"""SELECT *
+      FROM penta.CJ_TEST."VW_제품_월별판매_아이템"
+      WHERE 1=1 
+    """
+  
+    for key, value in filter_dict.items(): 
+        
+        value_str = ', '.join([f"'{k}'" for k in value])
+        
+        if value_str == '':
+         break
+        else:
+            sql += f""" and "{key}" NOT IN ({value_str})"""
+    
+    sql += """ LIMIT 100;"""                                             # 테이블 개수 설정
+
+    
+    created_dataframe = session.sql(sql)
+    queried_data = created_dataframe.to_pandas()
+
+    return queried_data
+
+
+# 딕셔너리에 추가 함수
+def add_filter_to_dict(filter_dict, filter_name, filters):              # 딕셔너리에 추가
+    filter_dict[filter_name] = filters
+    
+# 메인 함수
+def main(select_filters):
+
+    filter_dict = {}                                                    # 딕셔너리 초기화
+    columns = ''                                                        # 권역 쪼개기를 위한 초기화
+
+    if len(select_filters) > 0:                                         # StreamlitAPIException 방지하기 위한 if문
+        columns = st.columns(len(select_filters))
+
+        
+    for i, filter_col in enumerate(columns, start=0):                   # 설명을 위해서 i값을 추가했다.
+        filters = filter_col.multiselect(f'{select_filters[i]} 필터', column_data(select_filters[i])) # filters => 리스트로 생성
+        add_filter_to_dict(filter_dict, select_filters[i], filters)
+        
+    data_filtered = filter_data(filter_dict)                            # st.write하면 표 추출
+
+    if len(select_rows) == 0:
+        pdf1 = data_filtered
+        return pdf1
+    else:
+        pdf1 = pd.pivot_table(data_filtered, index =select_columns,
+                                columns=select_rows,
+                                values = select_value)   
+
+        return pdf1
+    
+if __name__ == "__main__":
+    session = Create_session_object()
+    button_1 = st.button("pivot download")
+
+    st.sidebar.markdown(f"# Main page🎈")   
+    col1 , col2 = st.sidebar.columns(2)
+    col3 , col4 = st.sidebar.columns(2)
+
+    # 리스트로 출력됨
+    select_filters = col1.multiselect('필터',column_name())               # 선택한 값이 리스트로 만들어진다.
+    select_rows = col2.multiselect('행',column_name())
+    select_columns = col3.multiselect('열',column_name())
+    select_value = col4.multiselect('값',column_name())
+
+    st.title("Snowflake Streamlit Pivot Table")
+    pdf1 = main(select_filters)
+    
+
+    ###### 삼각형 에러 없애기
+    # 피벗 테이블에 만들떄 발생하는 에러를 수정함 -> 차트의 값을 문자열로 변경했다.
+    pivot1 = pdf1.fillna('')
+    pivot2 = pivot1.copy()
+   
+    for col in pivot1.columns:
+        pivot2[col] = pivot2[col].astype(str)
+    st.dataframe(pivot2)
+
+    button_2 = st.button("plot_ download")
+
+
+
+    ###### 피벗 테이블 json으로 다운로드 + target table에 json으로 적재
+    if button_1 == True:
+        result = pdf1.to_json(orient='index')
+        parsed = json.loads(result)
+        upload_file_s3(bucket, file_name + '.json', parsed)
+    
+        #파이썬_테스트.download('wanthome','test4streamlit',file_name+'.json')
+        sql = f"copy into target_table from @json_s3/{file_name}.json FILE_FORMAT = (TYPE = JSON)"
+        session_sql = session.sql(sql)
+        session_sql.show()
+
+
