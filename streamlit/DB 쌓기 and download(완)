@@ -37,8 +37,8 @@ def Create_session_object() -> Session:
    print(session.sql('select current_warehouse(), current_database(), current_schema()').collect())
    return session
 # s3_ boto3 환경설정
-ACCESS_KEY = 'AKIAY2WQZ36SOZD5FFOY'
-SECRET_KEY = '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'
+ACCESS_KEY = ''
+SECRET_KEY = ''
 bucket = 'test4streamlit'
 file_name = 's3_test_{}{:02d}{:02d}{:02d}'.format(datetime.today().year, datetime.today().month, datetime.today().day, datetime.today().second)
 
