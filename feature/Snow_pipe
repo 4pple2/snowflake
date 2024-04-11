@@ -1,0 +1,65 @@
+-----------------------------------------------
+--                                           --
+--          CREATE TABLE               --
+--                                           --
+-----------------------------------------------
+CREATE OR REPLACE TABLE PARQ_TABLE (
+PARQ_VARIANT VARIANT);
+
+-----------------------------------------------
+--                                           --
+--          CREATE INTEGRATION               --
+--                                           --
+-----------------------------------------------
+create or replace STORAGE INTEGRATION parquet_inte
+  TYPE = EXTERNAL_STAGE
+  STORAGE_PROVIDER = 'S3'
+  ENABLED = TRUE
+  STORAGE_AWS_ROLE_ARN = 'arn:aws:<ARN>'
+  STORAGE_ALLOWED_LOCATIONS = ('s3://streamlit2local');
+
+-- 정보 파악
+desc INTEGRATION parquet_inte;
+
+-----------------------------------------------
+--                                           --
+--          CREATE STAGE                     --
+--                                           --
+-----------------------------------------------
+CREATE or replace STAGE raw_data_stage_par
+  STORAGE_INTEGRATION = parquet_inte 
+  URL = 's3://<위치>' 
+  FILE_FORMAT = parquet_format
+  ;
+-----------------------------------------------
+--                                           --
+--          Create Snowpipe                  --
+--                                           --
+-----------------------------------------------
+CREATE OR REPLACE PIPE PIPE_TEST AUTO_INGEST=TRUE AS
+COPY INTO PARQ_TABLE
+FROM @raw_data_stage_par
+FILE_FORMAT = PARQUET_FORMAT
+MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
+;
+
+SHOW PIPES;
+ALTER PIPE PIPE_TEST REFRESH;
+
+SELECT * FROM PARQ_TABLE;
+
+SELECT GET_DDL('TABLE','PARQ_TABLE');
+
+
+CREATE OR REPLACE TABLE PARQ_TABLE
+  USING TEMPLATE (
+    SELECT ARRAY_AGG(object_construct(*))
+      FROM TABLE(
+    INFER_SCHEMA(
+      LOCATION=>'@raw_data_stage_par/case_name.parquet',
+      FILE_FORMAT=>'PARQUET_FORMAT'
+      )
+      )
+      );
+
+select * from PARQ_TABLE ;
