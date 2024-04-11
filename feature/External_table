@@ -9,7 +9,7 @@ CREATE OR REPLACE STORAGE INTEGRATION CDC_TEST
   ENABLED = TRUE
 
   STORAGE_AWS_ROLE_ARN = ''
-  STORAGE_ALLOWED_LOCATIONS = ('s3://junseong-cdc-test')
+  STORAGE_ALLOWED_LOCATIONS = ('s3://위치')
 ;
 DESC INTEGRATION CDC_TEST
 ;
@@ -20,7 +20,7 @@ DESC INTEGRATION CDC_TEST
 -----------------------------------------------
 CREATE or replace STAGE CDC_TEST_STAGE
   STORAGE_INTEGRATION = CDC_TEST 
-  URL = 's3://junseong-cdc-test/ADMIN/CHLEE_TEST' 
+  URL = 's3://위치' 
   FILE_FORMAT = PUBLIC.parquet_format
   ;
 LIST @CDC_TEST_STAGE
