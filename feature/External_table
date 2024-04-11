@@ -1,0 +1,125 @@
+-----------------------------------------------
+--                                           --
+--          CREATE INTEGRATION               --
+--                                           --
+-----------------------------------------------
+CREATE OR REPLACE STORAGE INTEGRATION CDC_TEST
+  TYPE = EXTERNAL_STAGE
+  STORAGE_PROVIDER = 'S3'
+  ENABLED = TRUE
+
+  STORAGE_AWS_ROLE_ARN = ''
+  STORAGE_ALLOWED_LOCATIONS = ('s3://junseong-cdc-test')
+;
+DESC INTEGRATION CDC_TEST
+;
+-----------------------------------------------
+--                                           --
+--          CREATE STAGE                     --
+--                                           --
+-----------------------------------------------
+CREATE or replace STAGE CDC_TEST_STAGE
+  STORAGE_INTEGRATION = CDC_TEST 
+  URL = 's3://junseong-cdc-test/ADMIN/CHLEE_TEST' 
+  FILE_FORMAT = PUBLIC.parquet_format
+  ;
+LIST @CDC_TEST_STAGE
+;
+-----------------------------------------------
+--                                           --
+--          CREATE TARGET TABLE              --
+--                                           --
+-----------------------------------------------
+CREATE OR REPLACE TABLE EXTERNAL_TABLE.CDC_TABLE
+(
+      CD_KEY          VARCHAR(30)
+    , PARENT_CD       VARCHAR(8)
+    , CD              VARCHAR(8)
+    , LVL             VARCHAR(100)
+    , SORT            VARCHAR(100)
+    , USE_YN          VARCHAR(100)
+    , CD_NM           VARCHAR(100)
+    , CD_NM_ENG       VARCHAR(100)
+    , CD_NM_CHN       VARCHAR(100)
+    , CD_NM_JPN       VARCHAR(100)
+    , CD_NM_ETC       VARCHAR(100)
+    , RMK             VARCHAR(1000)
+    , ERP_PARENT_CD   VARCHAR(24)
+    , ERP_TABLE       VARCHAR(24)
+    , VAL1            VARCHAR(100)
+    , VAL2            VARCHAR(100)
+    , VAL3            VARCHAR(100)
+    , VAL4            VARCHAR(100)
+    , VAL5            VARCHAR(100)
+    , VAL6            VARCHAR(100)
+    , VAL7            VARCHAR(100)
+    , VAL8            VARCHAR(100)
+    , VAL9            VARCHAR(100)
+    , VAL10           VARCHAR(100)
+    , AR_H_TIMESTAMP  DATETIME(7)
+    , AR_H_STREAM_POSITION VARCHAR(20)
+)
+;
+-----------------------------------------------
+--                                           --
+--          CREATE EXTERNAL TABLE             --
+--                                           --
+-----------------------------------------------
+CREATE OR REPLACE EXTERNAL TABLE EXTERNAL_TABLE.CDC_TABLE_EX
+(		
+	  TRANSACTIONS      VARCHAR        AS (VALUE:Op::STRING)
+	, TRANSACTION_ID    VARCHAR        AS (VALUE:transact_id::VARCHAR)
+	, FILE_NAME         VARCHAR        AS  METADATA$FILENAME
+	, ROW_NUM           NUMBER         AS  METADATA$FILE_ROW_NUMBER
+    , CD_KEY          VARCHAR(30)      AS (VALUE:CD_KEY::VARCHAR(30))
+    , PARENT_CD       VARCHAR(8)       AS (VALUE:PARENT_CD::VARCHAR(8))
+    , CD              VARCHAR(8)       AS (VALUE:CD::VARCHAR(8))
+    , LVL             VARCHAR(100)     AS (VALUE:LVL::VARCHAR(100))
+    , SORT            VARCHAR(100)     AS (VALUE:SORT::VARCHAR(100))
+    , USE_YN          VARCHAR(100)     AS (VALUE:USE_YN::VARCHAR(100))
+    , CD_NM           VARCHAR(100)     AS (VALUE:CD_NM::VARCHAR(100))
+    , CD_NM_ENG       VARCHAR(100)     AS (VALUE:CD_NM_ENG::VARCHAR(100))
+    , CD_NM_CHN       VARCHAR(100)     AS (VALUE:CD_NM_CHN::VARCHAR(100))
+    , CD_NM_JPN       VARCHAR(100)     AS (VALUE:CD_NM_JPN::VARCHAR(100))
+    , CD_NM_ETC       VARCHAR(100)     AS (VALUE:CD_NM_ETC::VARCHAR(100))
+    , RMK             VARCHAR(1000)    AS (VALUE:RMK::VARCHAR(1000))
+    , ERP_PARENT_CD   VARCHAR(24)      AS (VALUE:ERP_PARENT_CD::VARCHAR(24))
+    , ERP_TABLE       VARCHAR(24)      AS (VALUE:ERP_TABLE::VARCHAR(24))
+    , VAL1            VARCHAR(100)     AS (VALUE:VAL1::VARCHAR(100))
+    , VAL2            VARCHAR(100)     AS (VALUE:VAL2::VARCHAR(100))
+    , VAL3            VARCHAR(100)     AS (VALUE:VAL3::VARCHAR(100))
+    , VAL4            VARCHAR(100)     AS (VALUE:VAL4::VARCHAR(100))
+    , VAL5            VARCHAR(100)     AS (VALUE:VAL5::VARCHAR(100))
+    , VAL6            VARCHAR(100)     AS (VALUE:VAL6::VARCHAR(100))
+    , VAL7            VARCHAR(100)     AS (VALUE:VAL7::VARCHAR(100))
+    , VAL8            VARCHAR(100)     AS (VALUE:VAL8::VARCHAR(100))
+    , VAL9            VARCHAR(100)     AS (VALUE:VAL9::VARCHAR(100))
+    , VAL10           VARCHAR(100)     AS (VALUE:VAL10::VARCHAR(100))
+    , AR_H_TIMESTAMP  DATETIME         AS (VALUE:change_time::TIMESTAMP)
+    , AR_H_STREAM_POSITION VARCHAR(50) AS (VALUE:transact_id::VARCHAR(50))
+)
+with LOCATION          = @CDC_TEST_STAGE
+AUTO_REFRESH      = FALSE
+REFRESH_ON_CREATE = FALSE
+FILE_FORMAT       = SNOW_TESTING.PUBLIC.PARQUET_FORMAT
+;
+-----------------------------------------------
+--                                           --
+--           EXTERNAL TABLE 확인             --
+--                                           --
+-----------------------------------------------
+ALTER EXTERNAL TABLE EXTERNAL_TABLE.CDC_TABLE_EX REFRESH;
+list @CDC_TEST_STAGE;
+SELECT * FROM  CDC_TABLE_EX
+ORDER BY TRANSACTIONS DESC;
+
+-----------------------------------------------
+--                                           --
+--               STREAM 확인                  --
+--                                           --
+-----------------------------------------------
+CREATE STREAM IF NOT EXISTS CDC_STREAM
+	ON EXTERNAL TABLE CDC_TABLE_EX	
+	INSERT_ONLY = TRUE
+;
+SHOW STREAMS;
