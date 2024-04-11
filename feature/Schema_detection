@@ -1,0 +1,42 @@
+grant usage on warehouse compute_wh to role sysadmin;
+
+-- file format
+create or replace file format parquet_format
+type = parquet;
+
+-- INTEGRATION
+create or replace STORAGE INTEGRATION parquet_inte
+  TYPE = EXTERNAL_STAGE
+  STORAGE_PROVIDER = 'S3'
+  ENABLED = TRUE
+  STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::<ARN>'
+  STORAGE_ALLOWED_LOCATIONS = ('s3://streamlit2local');
+
+-- 정보 파악
+desc INTEGRATION parquet_inte;
+
+-- STAGE
+CREATE or replace STAGE raw_data_stage_par
+  STORAGE_INTEGRATION = parquet_inte 
+  URL = 's3://<위치>' 
+  FILE_FORMAT = parquet_format;
+
+LIST @raw_data_stage_par;
+list @raw_data_stage_par/cities.parquet;
+list @raw_data_stage_par/userdata1.parquet; 
+
+SELECT GENERATE_COLUMN_DESCRIPTION(ARRAY_AGG(OBJECT_CONSTRUCT(*)), 'table')
+  FROM TABLE(
+    INFER_SCHEMA(
+      LOCATION=>'@raw_data_stage_par/userdata1.parquet' ,
+      FILE_FORMAT=>'parquet_format'
+      )
+    );
+
+    SELECT GENERATE_COLUMN_DESCRIPTION(ARRAY_AGG(OBJECT_CONSTRUCT(*)), 'table') AS COLUMNS
+  FROM TABLE (
+    INFER_SCHEMA(
+      LOCATION=>'@mystage',
+      FILE_FORMAT=>'my_parquet_format'
+    )
+  );
