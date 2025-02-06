@@ -1,0 +1,89 @@
+CREATE OR REPLACE PROCEDURE process_ord_item_UPDATE(
+    P_FR_DT VARCHAR, -- 시작 날짜
+    P_TO_DT VARCHAR, -- 종료 날짜
+    P_EXE_NO VARCHAR  -- 실행 번호 목록 (쉼표로 구분)
+)
+    RETURNS INT -- 프로시저 실행 결과 (결과값)
+    LANGUAGE SQL
+    EXECUTE AS CALLER -- 호출자 권한으로 실행
+AS
+$$
+DECLARE
+    START_TIME TIMESTAMP_NTZ; -- 프로시저 시작 시간
+    END_TIME TIMESTAMP_NTZ;   -- 프로시저 종료 시간
+    RUNNING_TIME INT;         -- 프로시저 실행 시간 (밀리초)
+
+    BEFORE_CNT INT;  -- 프로시저 실행 전 대상 행 수
+    UPDATED_CNT INT; -- 실제로 업데이트된 행 수
+    P_RESULT_CNT INT; -- 결과값
+
+    execution_id VARCHAR; -- 실행 ID
+    STATUS  VARCHAR; -- 성공/실패 여부
+
+BEGIN
+
+    -- 시작 시간 기록
+    SELECT CURRENT_TIMESTAMP() INTO START_TIME FROM DUAL;
+
+    -- 프로시저 실행 전 대상 행 수 계산
+    SELECT COUNT(*) 
+    INTO BEFORE_CNT
+    FROM SNOWPARK_TEST.PUBLIC.ORD_ITEM
+    WHERE ORD_ITEM_DATE BETWEEN :P_FR_DT AND :P_TO_DT
+    AND EXE_NO IN (
+        SELECT VALUE 
+        FROM TABLE(SPLIT_TO_TABLE(:P_EXE_NO, ',')) 
+    );
+
+    -- 대상 행 업데이트
+    UPDATE PUBLIC.ORD_ITEM
+    SET ORD_ITEM_NAME = 'Updated Item',
+        UPDATE_DATE = current_timestamp
+    WHERE ORD_ITEM_DATE BETWEEN :P_FR_DT AND :P_TO_DT
+    AND EXE_NO IN (SELECT VALUE FROM TABLE(SPLIT_TO_TABLE(:P_EXE_NO, ',')));
+
+    -- 업데이트된 행 수 계산
+    SELECT COUNT(*) 
+    INTO UPDATED_CNT
+    FROM SNOWPARK_TEST.PUBLIC.ORD_ITEM
+    WHERE ORD_ITEM_DATE BETWEEN :P_FR_DT AND :P_TO_DT
+    AND EXE_NO IN (
+        SELECT VALUE 
+        FROM TABLE(SPLIT_TO_TABLE(:P_EXE_NO, ',')) 
+    )
+    AND ORD_ITEM_NAME = 'Updated Item';  -- 실제 업데이트된 항목만 확인
+
+    -- 업데이트된 행이 없으면 실패로 처리
+    IF (:UPDATED_CNT = 0) THEN
+        STATUS := 'FAILURE';
+    ELSE
+        STATUS := 'SUCCESS';
+    END IF;
+
+    -- 실행 시간 계산 (밀리초 단위)
+    SELECT DATEDIFF('millisecond', TO_TIMESTAMP_NTZ(:START_TIME), CURRENT_TIMESTAMP()) INTO RUNNING_TIME FROM DUAL;
+
+    -- 실행 ID 생성
+    execution_id := UUID_STRING();
+
+    -- 이력 테이블에 상태 기록 추가
+    INSERT INTO SNOWPARK_TEST.PUBLIC.SEQ_TASK 
+    VALUES(:execution_id, 'PROCESS_ORD_ITEM_UPDATE', :RUNNING_TIME, :UPDATED_CNT, :STATUS);
+
+    COMMIT;
+    
+    RETURN UPDATED_CNT;
+
+EXCEPTION
+  WHEN OTHER THEN
+    -- 예외 발생 시 상태를 실패로 설정하고 이력 테이블에 삽입
+    STATUS := 'FAILURE';
+    INSERT INTO SNOWPARK_TEST.PUBLIC.SEQ_TASK 
+    VALUES(:execution_id, 'PROCESS_ORD_ITEM_UPDATE', :RUNNING_TIME, :UPDATED_CNT, :STATUS);
+
+    RETURN OBJECT_CONSTRUCT('Error type', 'Other error',
+                            'SQLCODE', sqlcode,
+                            'SQLERRM', sqlerrm,
+                            'SQLSTATE', sqlstate);
+END;
+$$;
