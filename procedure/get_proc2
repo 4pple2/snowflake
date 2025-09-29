@@ -1,0 +1,53 @@
+CREATE OR REPLACE PROCEDURE DATA_20250923.COMM.GET_PROC2("PNAME" VARCHAR)
+RETURNS VARCHAR
+LANGUAGE SQL
+EXECUTE AS OWNER
+AS '
+DECLARE
+  proc_signature VARCHAR;
+  schema_name VARCHAR;
+  ddl_text VARCHAR;
+  ddl_body VARCHAR;
+  full_proc_name VARCHAR;
+  cleaned_signature VARCHAR;
+BEGIN
+  IF (PNAME LIKE ''%.%'') THEN PNAME := SPLIT_PART(PNAME, ''.'', 2);
+  END IF;
+  SELECT ARGUMENT_SIGNATURE
+    INTO proc_signature
+    FROM INFORMATION_SCHEMA.PROCEDURES
+   WHERE PROCEDURE_NAME = :PNAME
+   LIMIT 1;
+ 
+    SELECT REGEXP_REPLACE(:proc_signature, ''\\\\w+\\\\s+(VARCHAR|NVARCHAR|TEXT|STRING|BOOLEAN|NUMBER|DECIMAL|NUMERIC|INT|INTEGER|BIGINT|SMALLINT|TINYINT|BYTEINT|FLOAT|FLOAT4|FLOAT8|DOUBLE|DOUBLE PRECISION|REAL|DATE|DATETIME|TIME|TIMESTAMP|TIMESTAMP_LTZ|TIMESTAMP_NTZ|TIMESTAMP_TZ|VARIANT|OBJECT|ARRAY|BINARY|VARBINARY|GEOGRAPHY|GEOMETRY)'',''\\\\1'')
+    INTO cleaned_signature;
+ 
+  SELECT PROCEDURE_SCHEMA
+   INTO schema_name
+   FROM INFORMATION_SCHEMA.PROCEDURES
+  WHERE PROCEDURE_NAME = :PNAME
+  LIMIT 1;
+ 
+  full_proc_name := schema_name || ''.'' || ''"'' ||PNAME || ''"'' || cleaned_signature;
+ 
+  EXECUTE IMMEDIATE ''SELECT GET_DDL(''''PROCEDURE'''', '''''' || full_proc_name || '''''')'';
+  SELECT PROCEDURE_DEFINITION
+   INTO ddl_body
+  FROM INFORMATION_SCHEMA.PROCEDURES
+  WHERE PROCEDURE_NAME = :PNAME
+  LIMIT 1;
+ 
+ 
+  IF (full_proc_name IS NOT NULL) THEN
+    ddl_text := CONCAT(SPLIT_PART(get_ddl(''PROCEDURE'', full_proc_name),''AS \\'''',0), ''AS \\$\\$'', ddl_body, ''\\$\\$;'');
+    ddl_text := replace(ddl_text, ''PROCEDURE "'', concat(''PROCEDURE "'', schema_name, ''"."''));
+    RETURN ddl_text;
+  ELSE
+    RETURN ''Procedure like '''''' || PNAME || '''''' not found or signature could not be extracted.'';
+  END IF;
+ 
+EXCEPTION
+  WHEN OTHER THEN
+    RETURN ''Error processing procedure '' || PNAME || '': '' || SQLERRM;
+END;
+';
